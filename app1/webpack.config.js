@@ -5,22 +5,23 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const TerserPlugin = require("terser-webpack-plugin");
 // const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const { ModuleFederationPlugin } = require('webpack').container;
 
 module.exports = {
-    entry: {
-        admin: './src/modules/admin/index.js',
-        user: './src/modules/user/index.js',
-    },
+    entry: './src/index.js',
     output: {
         filename: '[name].js',
         chunkFilename: '[name].chunk.js',
         path: path.resolve(__dirname, './dist'),
         clean: true,
-        // publicPath: '/static/'
+        publicPath: 'http://localhost:3001/'
     },
     mode: 'none',
     devServer: {
-        port: 8888
+        port: 8888,
+        static: {
+            directory: path.resolve(__dirname, './dist')
+        }
     },
     module: {
         rules: [
@@ -29,13 +30,9 @@ module.exports = {
                 type: 'asset/inline',
                 parser: {
                     dataUrlCondition: {
-                        maxSize: 3 * 1024 
+                        maxSize: 3 * 1024
                     }
                 }
-            },
-            {
-                test: /\.txt/,
-                type: 'asset/source'
             },
             {
                 test: /\.(scss|css)$/i,
@@ -69,31 +66,29 @@ module.exports = {
             filename: '[name].css', // create style.scss file to collect all css file
         }),
         new HtmlWebpackPlugin({
-            filename: 'admin.html',
-            chunks: ['admin'],
-            title: 'Webpack Training - Admin page',
+            filename: 'app1.html',
+            title: 'App 1',
             scriptLoading: 'defer',
             // use handlebars-loader to use these variables
-            description: "Admin page",
-            template: './src/index.hbs',
-            minify: false // 
+            description: "App 1",
+            template: 'src/index.hbs',
         }),
-        new HtmlWebpackPlugin({
-            filename: 'user.html',
-            chunks: ['user'],
-            title: 'Webpack Training',
-            scriptLoading: 'defer',
-            // use handlebars-loader to use these variables
-            description: "Some description",
-            template: './src/index.hbs',
-            minify: false
-        }),
+        new ModuleFederationPlugin({
+            name: "AppOne",
+            filename: 'remoteEntry.js',
+            exposes: {
+                './App': './src/shared.js',
+            },
+            remotes: {
+                'AppTitle': 'AppTitle@http://localhost:3003/remoteEntry.js'
+            }
+        })
     ],
     devtool: 'inline-source-map', // in order to debugging
     optimization: { // code splitting
         splitChunks: {
             chunks: 'all',
-            minSize: 10000 
+            minSize: 10000
         },
     },
     target: ['web', 'es5'],
